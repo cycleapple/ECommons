@@ -14,13 +14,39 @@ public partial class AddonMaster
         public WKSMissionInfomation(nint addon) : base(addon) { }
         public WKSMissionInfomation(void* addon) : base(addon) { }
 
+        private string? ReadStringValue(int index)
+        {
+            if (Addon == null || Addon->AtkValues == null || Addon->AtkValuesCount <= index)
+                return null;
+
+            var atkValue = Addon->AtkValues[index];
+            if (!atkValue.Type.EqualsAny(ValueType.String, ValueType.String8, ValueType.ManagedString, ValueType.WideString))
+                return null;
+
+            var value = atkValue.String.Value;
+            if (value == null)
+                return null;
+
+            return MemoryHelper.ReadSeStringNullTerminated((nint)value)?.GetText();
+        }
+
+        private static uint ParseScore(string? rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue))
+                return 0;
+
+            if (uint.TryParse(rawValue, NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var result))
+                return result;
+
+            var cleanedValue = System.Text.RegularExpressions.Regex.Replace(rawValue, @"[^\d]", "");
+            return uint.TryParse(cleanedValue, out result) ? result : 0;
+        }
+
         public string Name
         {
             get
             {
-                return MemoryHelper
-                    .ReadSeStringNullTerminated((nint)Addon->AtkValues[0].String.Value)
-                    .GetText();
+                return ReadStringValue(0) ?? string.Empty;
             }
         }
 
@@ -28,18 +54,7 @@ public partial class AddonMaster
         {
             get
             {
-                var rawValue = MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[2].String.Value).GetText();
-
-                // Number coversion test #1.
-                if(uint.TryParse(rawValue, NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var result))
-                    return result;
-
-                // Fallback: if the first test fails
-                var cleanedValue = System.Text.RegularExpressions.Regex.Replace(rawValue, @"[^\d]", "");
-                if(uint.TryParse(cleanedValue, out result))
-                    return result;
-
-                return 0; // fallback if parsing fails
+                return ParseScore(ReadStringValue(2));
             }
         }
 
@@ -47,18 +62,7 @@ public partial class AddonMaster
         {
             get
             {
-                var rawValue = MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[3].String.Value).GetText();
-
-                // Number coversion test #1.
-                if(uint.TryParse(rawValue, NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var result))
-                    return result;
-
-                // Fallback: if the first test fails
-                var cleanedValue = System.Text.RegularExpressions.Regex.Replace(rawValue, @"[^\d]", "");
-                if(uint.TryParse(cleanedValue, out result))
-                    return result;
-
-                return 0; // fallback if parsing fails
+                return ParseScore(ReadStringValue(3));
             }
         }
 
@@ -66,18 +70,7 @@ public partial class AddonMaster
         {
             get
             {
-                var rawValue = MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[4].String.Value).GetText();
-
-                // Number coversion test #1.
-                if(uint.TryParse(rawValue, NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var result))
-                    return result;
-
-                // Fallback: if the first test fails
-                var cleanedValue = System.Text.RegularExpressions.Regex.Replace(rawValue, @"[^\d]", "");
-                if(uint.TryParse(cleanedValue, out result))
-                    return result;
-
-                return 0; // fallback if parsing fails
+                return ParseScore(ReadStringValue(4));
             }
         }
 
@@ -85,7 +78,9 @@ public partial class AddonMaster
         {
             get
             {
-                var rawValue = MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[5].String.Value).GetText();
+                var rawValue = ReadStringValue(5);
+                if (string.IsNullOrWhiteSpace(rawValue))
+                    return 0;
 
                 // Extract the left side of the slash
                 var leftSide = rawValue.Split('/')[0].Trim();
@@ -101,6 +96,20 @@ public partial class AddonMaster
 
                 return 0; // fallback if parsing fails
             }
+        }
+
+        public bool TryGetCriticalScore(out uint score)
+        {
+            var rawValue = ReadStringValue(5);
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                score = 0;
+                return false;
+            }
+
+            var leftSide = rawValue.Split('/')[0].Trim();
+            score = ParseScore(leftSide);
+            return true;
         }
 
         public AtkComponentButton* CosmoPouchButton => Addon->GetComponentButtonById(26);
