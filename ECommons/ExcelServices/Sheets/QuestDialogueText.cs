@@ -1,4 +1,4 @@
-﻿using FFXIVClientStructs.FFXIV.Component.Excel;
+using FFXIVClientStructs.FFXIV.Component.Excel;
 using Lumina;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
@@ -14,6 +14,9 @@ namespace ECommons.ExcelServices.Sheets;
 [Sheet]
 public struct QuestDialogueText(ExcelPage page, uint offset, uint row) : IExcelRow<QuestDialogueText>
 {
+    public ExcelPage ExcelPage => page;
+    public uint RowOffset => offset;
+
     public ReadOnlySeString Key => page.ReadString(offset, offset);
     public ReadOnlySeString Value => page.ReadString(offset + 4, offset);
     public uint RowId => row;
